@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>MeshPeak — 標高ラスタ 3D グリッドビューア</title>
+<meta name="description" content="5x5グリッドの標高ラスタCSVを読み込み、DN値のマトリクスと3D地形で学べる教育用ツール">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Share+Tech+Mono&family=Noto+Sans+JP:wght@400;700&display=swap">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<canvas id="bg"></canvas>
+<div class="vignette"></div><div class="scanlines"></div><div class="scanbeam"></div>
+
+<div id="boot"><pre id="bootText" class="caret"></pre><div class="skip">[ CLICK TO SKIP ]</div></div>
+<div class="drop" id="drop">DROP CSV TO LOAD</div>
+
+<div class="wrap">
+  <header>
+    <div class="logo">
+      <svg viewBox="0 0 48 48" fill="none" stroke="#00f0ff" stroke-width="1.6">
+        <g class="spin"><circle cx="24" cy="24" r="21" stroke-dasharray="4 5"/></g>
+        <path d="M6 34 L18 14 L26 26 L31 19 L42 34 Z" fill="rgba(0,240,255,.12)"/>
+        <path d="M4 40 H44" stroke="#ff7a00"/>
+      </svg>
+      <div>
+        <h1 data-t="MESHPEAK"><span>MESH</span>PEAK</h1>
+        <div class="sub">ELEVATION RASTER // GRID LAB</div>
+      </div>
+    </div>
+    <div class="status"><span class="dot"></span>SYSTEM <b>ONLINE</b><br>GRID <b id="stGrid">--</b> · CELLS <b id="stCells">--</b></div>
+  </header>
+
+  <div class="grid">
+    <!-- LEFT -->
+    <div class="col">
+      <section class="panel live">
+        <h2>RASTER MATRIX <small>DN値マトリクス</small></h2>
+        <div class="matrix-wrap">
+          <div class="corner">行↓ 列→</div>
+          <div class="axis-x" id="axisX"></div>
+          <div class="axis-y" id="axisY"></div>
+          <div class="matrix" id="matrix"></div>
+        </div>
+        <div class="legend"><span id="lgMin">0</span><div class="ramp" id="ramp"></div><span id="lgMax">0</span></div>
+        <div class="row" style="margin-top:12px">
+          <span class="lbl">表示</span>
+          <button class="btn on" data-mode="dn">DN値</button>
+          <button class="btn" data-mode="pct">相対%</button>
+          <button class="btn" data-mode="rank">順位</button>
+          <button class="btn" data-mode="none">色のみ</button>
+        </div>
+        <p class="hint">セルをクリックで選択、ダブルクリックでDN値を書き換え。3Dの地形がリアルタイムに変形します。</p>
+      </section>
+
+      <section class="panel">
+        <h2>DATA INPUT <small>CSV読み込み</small></h2>
+        <div class="row">
+          <label class="btn" for="file">▲ CSVを開く</label>
+          <input type="file" id="file" accept=".csv,.txt,text/csv,text/plain">
+          <button class="btn" id="btnExport">▼ CSV保存</button>
+          <button class="btn warm" id="btnRandom">⚡ ランダム</button>
+        </div>
+        <div class="row" id="samples" style="margin-top:12px"></div>
+        <textarea id="csvText" spellcheck="false" placeholder="ここにCSVを貼り付け&#10;10,20,30,20,10&#10;..."></textarea>
+        <div class="row"><button class="btn" id="btnApply">◆ 貼り付けを反映</button></div>
+        <div class="err" id="err"></div>
+        <p class="hint">ファイルはページ全体へドラッグ&amp;ドロップもできます。カンマ・空白・タブ区切り対応、<code>#</code>始まりの行は無視されます。データはブラウザ内だけで処理され、送信されません。</p>
+      </section>
+
+      <section class="panel">
+        <h2>STATISTICS <small>統計</small></h2>
+        <div class="stats">
+          <div class="stat"><div class="k">MIN</div><div class="v" id="sMin">-</div></div>
+          <div class="stat"><div class="k">MAX</div><div class="v" id="sMax">-</div></div>
+          <div class="stat"><div class="k">MEAN</div><div class="v" id="sMean">-</div></div>
+          <div class="stat"><div class="k">RANGE</div><div class="v" id="sRange">-</div></div>
+        </div>
+      </section>
+
+      <section class="panel">
+        <h2>CELL INSPECTOR <small>選択セルの解析</small></h2>
+        <div class="insp">
+          <div class="mini" id="mini"></div>
+          <div class="kv" id="kv">セルを選択してください</div>
+        </div>
+        <div class="row" style="margin-top:12px">
+          <span class="lbl">セルサイズ</span><input type="number" id="cellSize" value="10" min="1" step="1"><span class="lbl">m</span>
+        </div>
+        <p class="hint">傾斜は周囲8セルから求める Horn 法。DN値=標高[m]として計算します(縁のセルは計算不可)。</p>
+      </section>
+    </div>
+
+    <!-- RIGHT -->
+    <div class="col">
+      <section class="panel viewport vwrap">
+        <h2>3D TERRAIN <small>立体表示 / ドラッグで回転・ホイールでズーム</small></h2>
+        <canvas id="gl"></canvas>
+        <div class="reticle"></div>
+        <div class="tip" id="tip"></div>
+        <div class="ctrls">
+          <button class="btn" data-cam="iso">斜め</button>
+          <button class="btn" data-cam="top">真上</button>
+          <button class="btn" data-cam="side">真横</button>
+        </div>
+        <div class="hud bl" id="hudL">AZ 0° EL 0°</div>
+        <div class="hud br" id="hudR"></div>
+      </section>
+      <section class="panel" style="padding:0">
+        <div class="toolbar">
+          <div class="grp"><span class="lbl">形状</span>
+            <button class="btn on" data-view="bars">ブロック</button>
+            <button class="btn" data-view="surf">サーフェス</button></div>
+          <div class="grp" style="flex:1;min-width:200px"><span class="lbl">高さ強調</span>
+            <input type="range" id="exag" min="0.2" max="3" step="0.05" value="1"><span class="val" id="exagV">×1.0</span></div>
+          <div class="grp">
+            <label class="chk"><input type="checkbox" id="cWire" checked>ワイヤー</label>
+            <label class="chk"><input type="checkbox" id="cLabel" checked>DN表示</label>
+            <label class="chk"><input type="checkbox" id="cDrop" checked>落下線</label>
+            <label class="chk"><input type="checkbox" id="cRot" checked>自動回転</label>
+          </div>
+        </div>
+        <div class="toolbar" style="border-top:1px solid rgba(0,240,255,.12)">
+          <div class="grp"><label class="chk"><input type="checkbox" id="cWater">水位シミュレーション</label></div>
+          <div class="grp" style="flex:1;min-width:200px"><span class="lbl">水位DN</span>
+            <input type="range" id="water" min="0" max="100" step="1" value="0"><span class="val" id="waterV">0</span></div>
+        </div>
+      </section>
+      <section class="panel">
+        <h2>SYSTEM LOG</h2>
+        <div id="log"></div>
+      </section>
+    </div>
+  </div>
+
+  <section class="panel" style="margin-top:20px">
+    <h2>HOW IT WORKS <small>しくみを学ぼう</small></h2>
+    <div class="learn">
+      <div class="step"><div class="n">01</div><h3>ラスタ = 格子状のデータ</h3><p>地図を方眼紙のように区切った1マスを<b>セル(ピクセル)</b>と呼びます。5×5なら全部で25セル。</p></div>
+      <div class="step"><div class="n">02</div><h3>DN値 = セルの数値</h3><p><code>Digital Number</code>。標高ラスタでは各セルの高さ(m)がそのままDN値になります。左のマトリクスの数字です。</p></div>
+      <div class="step"><div class="n">03</div><h3>行と列で場所を表す</h3><p>左上が<code>(行0, 列0)</code>。行は北→南、列は西→東に増えます。3Dの床にも同じ番号が表示されます。</p></div>
+      <div class="step"><div class="n">04</div><h3>DN値 → 高さ</h3><p>DN値の大きさを柱の高さに変換したものが<b>ブロック表示</b>。点を面でつなぐと連続した<b>地形面</b>になります。</p></div>
+      <div class="step"><div class="n">05</div><h3>隣り合うセルから傾斜</h3><p>隣のセルとのDN値の差が大きいほど急斜面。インスペクタで傾斜角と向きを確かめましょう。</p></div>
+      <div class="step"><div class="n">06</div><h3>水位で低地を探す</h3><p>水位を上げると、その値以下のセルが水没して青く表示されます。谷や盆地に水が溜まる様子を観察できます。</p></div>
+    </div>
+  </section>
+  <footer>MESHPEAK // EDUCATIONAL RASTER VIEWER · <a href="https://github.com/mapconcierge/MeshPeak">GitHub</a></footer>
+</div>
+
+<script src="vendor/three.min.js"></script>
+<script src="vendor/CopyShader.js"></script>
+<script src="vendor/LuminosityHighPassShader.js"></script>
+<script src="vendor/EffectComposer.js"></script>
+<script src="vendor/RenderPass.js"></script>
+<script src="vendor/ShaderPass.js"></script>
+<script src="vendor/MaskPass.js"></script>
+<script src="vendor/UnrealBloomPass.js"></script>
+<script src="js/samples.js"></script>
+<script src="js/bg.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>
