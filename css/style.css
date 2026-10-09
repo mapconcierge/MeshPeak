@@ -52,6 +52,9 @@ h1::after{color:var(--blue);animation:glitch2 5s infinite}
 @keyframes glitch1{0%,92%,100%{opacity:0;transform:none}93%{opacity:.8;transform:translate(-3px,1px);clip-path:inset(10% 0 60% 0)}95%{opacity:.8;transform:translate(3px,-1px);clip-path:inset(60% 0 10% 0)}97%{opacity:0}}
 @keyframes glitch2{0%,93%,100%{opacity:0;transform:none}94%{opacity:.8;transform:translate(3px,0);clip-path:inset(40% 0 30% 0)}96%{opacity:.8;transform:translate(-2px,1px);clip-path:inset(0 0 80% 0)}98%{opacity:0}}
 @keyframes flicker{0%,18%,22%,62%,64%,100%{opacity:1}20%,63%{opacity:.75}}
+.ttl{display:flex;align-items:flex-end;gap:8px}
+.ver{font-family:var(--font-m);font-size:11px;letter-spacing:.12em;color:var(--orange);text-shadow:0 0 8px rgba(255,122,0,.8);
+  border:1px solid rgba(255,122,0,.5);padding:0 5px;line-height:16px;margin-bottom:7px;animation:pulse 3s ease-in-out infinite}
 .sub{font-family:var(--font-m);font-size:12px;letter-spacing:.28em;color:var(--cyan);opacity:.8;margin-top:4px}
 .status{font-family:var(--font-m);font-size:12px;color:var(--dim);text-align:right;line-height:1.7}
 .status b{color:var(--cyan);font-weight:400;text-shadow:var(--glow)}
