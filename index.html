@@ -94,10 +94,13 @@
           <div class="mini" id="mini"></div>
           <div class="kv" id="kv">セルを選択してください</div>
         </div>
-        <div class="row" style="margin-top:12px">
+        <div class="row" style="margin-top:12px;justify-content:flex-end">
+          <button class="btn warm" id="btnClearSel" disabled>✕ 選択解除</button>
+        </div>
+        <div class="row" style="margin-top:10px">
           <span class="lbl">セルサイズ</span><input type="number" id="cellSize" value="10" min="1" step="1"><span class="lbl">m</span>
         </div>
-        <p class="hint">傾斜は周囲8セルから求める Horn 法。DN値=標高[m]として計算します(縁のセルは計算不可)。</p>
+        <p class="hint">傾斜は周囲8セルから求める Horn 法。DN値=標高[m]として計算します(縁のセルは計算不可)。選択したセルは再クリックしても解除されません。解除は上のボタンか <code>Esc</code> キーで。</p>
       </section>
     </div>
 

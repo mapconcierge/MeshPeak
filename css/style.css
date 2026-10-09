@@ -88,6 +88,7 @@ h1::after{color:var(--blue);animation:glitch2 5s infinite}
 .btn.on{background:rgba(0,240,255,.22);box-shadow:inset 0 0 12px rgba(0,240,255,.5)}
 .btn.warm{color:var(--orange);border-color:var(--orange)}
 .btn.warm:hover{background:var(--orange);color:#140800;box-shadow:0 0 14px var(--orange)}
+.btn:disabled{opacity:.3;filter:grayscale(.6);cursor:not-allowed;pointer-events:none}
 .row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
 .row+.row{margin-top:10px}
 textarea{width:100%;height:116px;resize:vertical;background:rgba(0,0,0,.5);border:1px solid var(--cyan-d);color:var(--cyan);
@@ -114,6 +115,7 @@ input[type=number]{width:72px;background:rgba(0,0,0,.5);border:1px solid var(--c
 .axis-x{grid-column:2;display:grid;gap:6px;font-family:var(--font-m);font-size:11px;color:var(--dim);text-align:center}
 .axis-y{grid-row:2;display:grid;gap:6px;font-family:var(--font-m);font-size:11px;color:var(--dim);align-items:center}
 .axis-y span{padding-right:2px}
+.axis-x span.sel,.axis-y span.sel{color:var(--orange);font-weight:700;text-shadow:0 0 8px var(--orange)}
 .corner{font-family:var(--font-m);font-size:10px;color:var(--orange);align-self:end;justify-self:center}
 .matrix{display:grid;gap:6px;container-type:inline-size}
 .cell{position:relative;aspect-ratio:1;display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;

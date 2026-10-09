@@ -152,6 +152,7 @@
   matrixEl.addEventListener('dblclick', (e) => { const p = cellAt(e); if (p) editCell(p); });
 
   function editCell([r, c]) {
+    select([r, c]);
     const d = cellEls[r * S.cols + c], dn = d.querySelector('.dn');
     const inp = document.createElement('input');
     inp.type = 'number'; inp.value = S.data[r][c]; inp.step = 'any';
@@ -166,7 +167,7 @@
         setData(S.data, { keepHeights: true, keepLevel: true, rebuildMatrix: false, msg: `CELL (${r},${c}) DN → ${fmt(v)}` });
       }
     };
-    inp.addEventListener('keydown', (e) => { if (e.key === 'Enter') end(true); else if (e.key === 'Escape') end(false); });
+    inp.addEventListener('keydown', (e) => { e.stopPropagation(); if (e.key === 'Enter') end(true); else if (e.key === 'Escape') end(false); });
     inp.addEventListener('blur', () => end(true));
   }
 
@@ -183,20 +184,30 @@
 
   function select(p) {
     const same = S.sel && S.sel[0] === p[0] && S.sel[1] === p[1];
-    S.sel = same ? null : p;
+    S.sel = p;
     renderSel(); Scene.setSel(S.sel);
-    if (S.sel) log(`SELECT (${p[0]},${p[1]}) DN=${fmt(S.data[p[0]][p[1]])}`);
+    if (!same) log(`SELECT (${p[0]},${p[1]}) DN=${fmt(S.data[p[0]][p[1]])}`);
+  }
+  function deselect() {
+    if (!S.sel) return;
+    S.sel = null;
+    renderSel(); Scene.setSel(null);
+    log('SELECTION CLEARED');
   }
 
   /* ================= インスペクタ ================= */
   const DIRS = ['北', '北東', '東', '南東', '南', '南西', '西', '北西'];
   function renderSel() {
     cellEls.forEach((d) => d.classList.remove('sel', 'nb'));
+    $$('#axisX span, #axisY span').forEach((s) => s.classList.remove('sel'));
     const mini = $('#mini'), kv = $('#kv');
     mini.innerHTML = Array.from({ length: 9 }, () => '<div class="na">·</div>').join('');
+    $('#btnClearSel').disabled = !S.sel;
     if (!S.sel) { kv.textContent = 'セルを選択してください'; return; }
     const [r, c] = S.sel, v = S.data[r][c];
     cellEls[r * S.cols + c].classList.add('sel');
+    $$('#axisX span')[c].classList.add('sel');
+    $$('#axisY span')[r].classList.add('sel');
     const win = [];
     for (let dr = -1; dr <= 1; dr++) for (let dc = -1; dc <= 1; dc++) {
       const rr = r + dr, cc = c + dc, ok = rr >= 0 && cc >= 0 && rr < S.rows && cc < S.cols;
@@ -238,6 +249,8 @@
   $('#cWater').addEventListener('change', (e) => { S.water = e.target.checked; renderMatrix(); Scene.applyVisibility(); log(S.water ? 'WATER SIM ENGAGED' : 'WATER SIM OFF'); });
   $('#water').addEventListener('input', (e) => { S.level = +e.target.value; $('#waterV').textContent = fmt(S.level); if (S.water) renderMatrix(); });
   $('#cellSize').addEventListener('input', (e) => { S.cellSize = Math.max(1, +e.target.value || 1); renderSel(); });
+  $('#btnClearSel').addEventListener('click', deselect);
+  addEventListener('keydown', (e) => { if (e.key === 'Escape' && S.sel) deselect(); });
 
   function loadText(text, name) {
     try { setData(parseCSV(text), { msg: `LOADED ${name} (${S.cols}x${S.rows})` + (S.cols === S.rows && [5, 7, 9].includes(S.cols) ? '' : ' — 標準外のサイズ') }); $('#err').textContent = ''; }
