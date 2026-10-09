@@ -26,7 +26,7 @@
       </svg>
       <div>
         <h1 data-t="MESHPEAK"><span>MESH</span>PEAK</h1>
-        <div class="sub">ELEVATION RASTER // GRID LAB</div>
+        <div class="sub">ELEVATION RASTER // FURUHASHI LAB.</div>
       </div>
     </div>
     <div class="status"><span class="dot"></span>SYSTEM <b>ONLINE</b><br>GRID <b id="stGrid">--</b> · CELLS <b id="stCells">--</b></div>
@@ -43,8 +43,14 @@
           <div class="axis-y" id="axisY"></div>
           <div class="matrix" id="matrix"></div>
         </div>
-        <div class="legend"><span id="lgMin">0</span><div class="ramp" id="ramp"></div><span id="lgMax">0</span></div>
         <div class="row" style="margin-top:12px">
+          <span class="lbl">グリッド</span>
+          <button class="btn on" data-size="5">5×5</button>
+          <button class="btn" data-size="7">7×7</button>
+          <button class="btn" data-size="9">9×9</button>
+        </div>
+        <div class="legend"><span id="lgMin">0</span><div class="ramp" id="ramp"></div><span id="lgMax">0</span></div>
+        <div class="row">
           <span class="lbl">表示</span>
           <button class="btn on" data-mode="dn">DN値</button>
           <button class="btn" data-mode="pct">相対%</button>
