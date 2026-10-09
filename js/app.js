@@ -8,7 +8,7 @@
   /* ================= 状態 ================= */
   const S = {
     data: [], rows: 0, cols: 0, min: 0, max: 0, mean: 0,
-    mode: 'dn', view: 'bars', exag: 1, sel: null, hover: null,
+    size: 5, src: null, mode: 'dn', view: 'bars', exag: 1, sel: null, hover: null,
     wire: true, labels: true, drops: true, rot: true, water: false, level: 0, cellSize: 10
   };
 
@@ -38,6 +38,30 @@
     while (logEl.children.length > 6) logEl.removeChild(logEl.firstChild);
   }
 
+  /* ================= グリッドサイズ ================= */
+  // 5×5の元データを双一次補間して n×n にする(形を保ったまま細かいグリッドへ)
+  function resample(d, n) {
+    const m = d.length;
+    if (m === n && d[0].length === n) return d.map((r) => r.slice());
+    const at = (r, c) => d[Math.min(m - 1, r)][Math.min(d[0].length - 1, c)];
+    return Array.from({ length: n }, (_, i) => Array.from({ length: n }, (_, j) => {
+      const y = i * (m - 1) / (n - 1), x = j * (d[0].length - 1) / (n - 1);
+      const y0 = Math.floor(y), x0 = Math.floor(x), fy = y - y0, fx = x - x0;
+      return Math.round(at(y0, x0) * (1 - fy) * (1 - fx) + at(y0, x0 + 1) * (1 - fy) * fx + at(y0 + 1, x0) * fy * (1 - fx) + at(y0 + 1, x0 + 1) * fy * fx);
+    }));
+  }
+  function syncSizeButtons() {
+    const sq = S.rows === S.cols ? S.rows : 0;
+    $$('[data-size]').forEach((b) => b.classList.toggle('on', +b.dataset.size === sq));
+  }
+  function setSize(n) {
+    S.size = n;
+    // サンプル由来で未編集なら元データから作り直す(5→9→5 でも情報が劣化しない)
+    const base = S.src ? S.src.data : S.data;
+    setData(resample(base, n), { msg: `GRID → ${n}×${n} (${n * n} CELLS)`, keepSrc: true });
+  }
+  $$('[data-size]').forEach((b) => b.addEventListener('click', () => setSize(+b.dataset.size)));
+
   /* ================= CSV ================= */
   function parseCSV(text) {
     const lines = text.replace(/^﻿/, '').split(/\r?\n/).map((l) => l.trim()).filter((l) => l && !l.startsWith('#'));
@@ -56,7 +80,10 @@
   const toCSV = () => S.data.map((r) => r.join(',')).join('\n') + '\n';
 
   function setData(data, opts = {}) {
+    if (!opts.keepSrc && !opts.sample) S.src = null;
+    if (opts.sample) S.src = opts.sample;
     S.data = data; S.rows = data.length; S.cols = data[0].length;
+    if (S.rows === S.cols && [5, 7, 9].includes(S.rows)) S.size = S.rows;
     const flat = data.flat();
     S.min = Math.min(...flat); S.max = Math.max(...flat);
     S.mean = flat.reduce((a, b) => a + b, 0) / flat.length;
@@ -67,6 +94,7 @@
     $('#csvText').value = toCSV().trim();
     renderAll(opts.rebuildMatrix !== false);
     Scene.rebuild(!!opts.keepHeights);
+    syncSizeButtons();
     $('#stGrid').textContent = `${S.cols}×${S.rows}`;
     $('#stCells').textContent = S.cols * S.rows;
     if (opts.msg) log(opts.msg);
@@ -82,6 +110,9 @@
   function buildMatrix() {
     matrixEl.innerHTML = ''; cellEls = [];
     matrixEl.style.gridTemplateColumns = `repeat(${S.cols},1fr)`;
+    const dense = S.cols > 6 || S.rows > 6;
+    matrixEl.classList.toggle('dense', dense); $('#axisX').classList.toggle('dense', dense); $('#axisY').classList.toggle('dense', dense);
+    matrixEl.style.setProperty('--dly', Math.min(28, 700 / (S.rows * S.cols)).toFixed(1) + 'ms');
     $('#axisX').style.gridTemplateColumns = `repeat(${S.cols},1fr)`;
     $('#axisY').style.gridTemplateRows = `repeat(${S.rows},1fr)`;
     $('#axisX').innerHTML = Array.from({ length: S.cols }, (_, c) => `<span>列${c}</span>`).join('');
@@ -103,7 +134,8 @@
       d.querySelector('.rc').textContent = `${r},${c}`;
       const dn = d.querySelector('.dn');
       dn.textContent = S.mode === 'dn' ? fmt(v) : S.mode === 'pct' ? Math.round(t * 100) + '%' : S.mode === 'rank' ? '#' + rk[i] : '';
-      dn.classList.toggle('sm', S.cols > 6 || String(dn.textContent).length > 4);
+      dn.classList.toggle('xs', S.cols > 8);
+      dn.classList.toggle('sm', S.cols <= 8 && (S.cols > 6 || String(dn.textContent).length > 4));
       d.querySelector('.tag').textContent = S.mode === 'dn' ? '' : fmt(v);
       d.classList.toggle('flood', S.water && v <= S.level);
     }));
@@ -208,7 +240,7 @@
   $('#cellSize').addEventListener('input', (e) => { S.cellSize = Math.max(1, +e.target.value || 1); renderSel(); });
 
   function loadText(text, name) {
-    try { setData(parseCSV(text), { msg: `LOADED ${name} (${S.cols}x${S.rows})` + (S.cols !== 5 || S.rows !== 5 ? ' — 5×5以外' : '') }); $('#err').textContent = ''; }
+    try { setData(parseCSV(text), { msg: `LOADED ${name} (${S.cols}x${S.rows})` + (S.cols === S.rows && [5, 7, 9].includes(S.cols) ? '' : ' — 標準外のサイズ') }); $('#err').textContent = ''; }
     catch (e) { $('#err').textContent = '✖ ' + e.message; log('PARSE ERROR: ' + e.message); }
   }
   $('#file').addEventListener('change', (e) => { const f = e.target.files[0]; if (f) f.text().then((t) => loadText(t, f.name.toUpperCase())); e.target.value = ''; });
@@ -221,14 +253,15 @@
   $('#btnRandom').addEventListener('click', () => {
     // 2〜3個の山をガウス関数で足し合わせ → ランダムでも地形っぽくなる
     const peaks = Array.from({ length: 2 + (Math.random() * 2 | 0) }, () => ({ x: Math.random() * 4, y: Math.random() * 4, h: 60 + Math.random() * 140, s: .8 + Math.random() * 1.2 }));
-    const d = Array.from({ length: 5 }, (_, r) => Array.from({ length: 5 }, (_, c) =>
-      Math.round(10 + peaks.reduce((a, p) => a + p.h * Math.exp(-((c - p.x) ** 2 + (r - p.y) ** 2) / (2 * p.s * p.s)), 0) + Math.random() * 8)));
+    const n = S.size, k = (n - 1) / 4; // ピーク位置・広がりをグリッドサイズに合わせる
+    const d = Array.from({ length: n }, (_, r) => Array.from({ length: n }, (_, c) =>
+      Math.round(10 + peaks.reduce((a, p) => a + p.h * Math.exp(-((c - p.x * k) ** 2 + (r - p.y * k) ** 2) / (2 * (p.s * k) ** 2)), 0) + Math.random() * 8)));
     setData(d, { msg: 'GENERATED RANDOM TERRAIN' });
   });
   const samplesEl = $('#samples');
   window.MESH_SAMPLES.forEach((s) => {
     const b = document.createElement('button'); b.className = 'btn'; b.textContent = s.name; b.title = s.desc;
-    b.addEventListener('click', () => setData(s.data.map((r) => r.slice()), { msg: `SAMPLE "${s.name}" — ${s.desc}` }));
+    b.addEventListener('click', () => setData(resample(s.data, S.size), { sample: { id: s.id, data: s.data }, msg: `SAMPLE "${s.name}" — ${s.desc}` }));
     samplesEl.appendChild(b);
   });
   // drag & drop
@@ -441,8 +474,9 @@
     function setSel() { updateMarkers(); }
 
     /* --- カメラ (自前オービット) --- */
+    let fitKey = '';
     const cam = { th: .7, ph: 1.0, rad: 11, tth: .7, tph: 1.0, trad: 11, auto: true, idle: 0 };
-    function fitCamera() { cam.trad = Math.max(S.cols, S.rows) * 2.1 + 2.5; if (!G.fitted) { cam.rad = cam.trad * 1.6; G.fitted = true; } }
+    function fitCamera() { cam.trad = Math.max(S.cols, S.rows) * 2.1 + 2.5; if (fitKey !== S.rows + 'x' + S.cols) { cam.rad = cam.trad * 1.6; fitKey = S.rows + 'x' + S.cols; } }
     function camPreset(k) {
       S.rot = false; $('#cRot').checked = false;
       if (k === 'iso') { cam.tth = .7; cam.tph = 1.0; } else if (k === 'top') { cam.tth = 0; cam.tph = 0.001; } else { cam.tth = 0; cam.tph = Math.PI / 2 - 0.06; }
@@ -543,7 +577,7 @@
   /* ================= 起動 ================= */
   function boot() {
     const el = $('#boot'), pre = $('#bootText');
-    const lines = ['> MESHPEAK GRID LAB v1.0', '> INITIALIZING RASTER ENGINE ........ OK', '> LOADING ELEVATION MATRIX ......... OK', '> MOUNTING 3D TERRAIN RENDERER ..... OK', '> WELCOME, USER.'];
+    const lines = ['> MESHPEAK // FURUHASHI LAB.', '> INITIALIZING RASTER ENGINE ........ OK', '> LOADING ELEVATION MATRIX ......... OK', '> MOUNTING 3D TERRAIN RENDERER ..... OK', '> WELCOME, USER.'];
     let i = 0, j = 0, finished = false;
     const done = () => { if (finished) return; finished = true; el.classList.add('done'); };
     el.addEventListener('click', done);
@@ -556,7 +590,7 @@
     })();
   }
 
-  setData(window.MESH_SAMPLES[0].data.map((r) => r.slice()), { msg: 'SAMPLE "火山" LOADED — SYSTEM READY' });
+  setData(window.MESH_SAMPLES[0].data.map((r) => r.slice()), { sample: { id: 'volcano', data: window.MESH_SAMPLES[0].data }, msg: 'SAMPLE "火山" LOADED — SYSTEM READY' });
   log('ドラッグで3Dを回転 / セルをクリックで解析');
   boot();
 })();

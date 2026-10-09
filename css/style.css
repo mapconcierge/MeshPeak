@@ -117,11 +117,14 @@ input[type=number]{width:72px;background:rgba(0,0,0,.5);border:1px solid var(--c
   border:1px solid var(--c);background:linear-gradient(160deg,color-mix(in srgb,var(--c) 38%,#000),color-mix(in srgb,var(--c) 12%,#000));
   box-shadow:inset 0 0 14px color-mix(in srgb,var(--c) 40%,transparent),0 0 8px color-mix(in srgb,var(--c) 28%,transparent);
   transition:transform .15s,box-shadow .15s,opacity .3s,filter .3s;overflow:hidden;
-  animation:cellin .55s both;animation-delay:calc(var(--i)*28ms)}
+  animation:cellin .55s both;animation-delay:calc(var(--i)*var(--dly,28ms))}
 @keyframes cellin{from{opacity:0;transform:scale(.6) rotateX(70deg);filter:brightness(3)}to{opacity:1;transform:none;filter:none}}
 .cell .rc{position:absolute;top:3px;left:5px;font-family:var(--font-m);font-size:9px;color:rgba(255,255,255,.55);letter-spacing:.05em}
 .cell .dn{font-family:var(--font-d);font-weight:700;font-size:clamp(16px,2.6vw,26px);color:#fff;text-shadow:0 0 8px var(--c),0 0 2px #000}
 .cell .dn.sm{font-size:clamp(13px,2vw,19px)}
+.cell .dn.xs{font-size:clamp(10px,1.5vw,15px)}
+.matrix.dense{gap:3px}.matrix.dense .cell .rc{font-size:7px;top:2px;left:3px}.matrix.dense .cell .tag{font-size:7px;bottom:5px;right:3px}.matrix.dense .cell .bar{height:3px}
+.axis-x.dense,.axis-y.dense{gap:3px;font-size:9px}
 .cell .bar{position:absolute;left:0;bottom:0;height:5px;width:calc(var(--t)*100%);background:var(--c);box-shadow:0 0 8px var(--c)}
 .cell .tag{position:absolute;bottom:7px;right:5px;font-family:var(--font-m);font-size:9px;color:#fff;opacity:.8}
 .cell::after{content:'';position:absolute;inset:0;background:linear-gradient(115deg,transparent 40%,rgba(255,255,255,.2) 50%,transparent 60%);
